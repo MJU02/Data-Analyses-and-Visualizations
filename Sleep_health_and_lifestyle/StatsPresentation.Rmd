@@ -1,0 +1,337 @@
+---
+title: "Deep Study on Sleep"
+author: "Mohammed Uddin"
+date: "2023-12-15"
+output: 
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+    width: 1200  # Specify the width of the slides
+    height: 900  # Specify the height of the slides
+---
+
+
+```{r include=FALSE}
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+
+if (!requireNamespace("tidyverse", quietly = TRUE)) {
+  install.packages("tidyverse")
+}
+
+if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  install.packages("ggplot2")
+}
+
+if (!requireNamespace("dplyr", quietly = TRUE)) {
+  install.packages("dplyr")
+}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+
+```
+
+## The Purpose
+We'll be taking a pragmatic look at sleep—a fundamental aspect of our lives that often escapes our conscious awareness. Rather than delving into the poetic or philosophical dimensions of sleep, we'll be focusing on the practical aspects.
+
+Sleep is a a vital physiological process that serves various functions, such as restoring bodily functions, consolidating memories, and supporting overall well-being.
+
+In this presentation, we won't be glamorizing sleep. Instead, we'll briefly discuss its primary stages, the factors influencing sleep quality, and the potential consequences of insufficient or disrupted sleep. Our aim is to provide a practical understanding of this routine yet essential activity.
+
+ 
+
+## Some of The Questions We Will Look Into
+
+- Investigate whether there are significant differences in the average sleep duration between males and females.
+- Examine whether the amount of sleep individuals get correlates with their daily physical activity levels. Does more sleep lead to more or less exercise?
+- Explore if there is a correlation between sleep quality and stress level. Does inadequate sleep relate to higher stress levels?
+
+## About The Data
+
+The dataset I'll Be using to look into the questions is taken from [kaggle](https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset)
+
+The dataset's description is: The Sleep Health and Lifestyle Dataset comprises 400 rows and 13 columns, covering a wide range of variables related to sleep and daily habits. It includes details such as gender, age, occupation, sleep duration, quality of sleep, physical activity level, stress levels, BMI category, blood pressure, heart rate, daily steps, and the presence or absence of sleep disorders.
+
+**The data Is synthetic!!!**
+
+## About the Data Cont.
+
+As stated before the dataset has 13 columns or features and they are: 
+
+- Person ID: An identifier for each individual.
+- Gender: The gender of the person (Male/Female).
+- Age: The age of the person in years.
+- Occupation: The occupation or profession of the person.
+- Sleep Duration (hours): The number of hours the person sleeps per day.
+- Quality of Sleep (scale: 1-10): A subjective rating of the quality of sleep, ranging from 1 to 10.
+- Physical Activity Level (minutes/day): The number of minutes the person engages in physical activity daily.
+- Stress Level (scale: 1-10): A subjective rating of the stress level experienced by the person, ranging from 1 to 10.
+
+
+## About the Data Cont.
+
+- BMI Category: The BMI category of the person (e.g., Underweight, Normal, Overweight).
+- Blood Pressure (systolic/diastolic): The blood pressure measurement of the person, indicated as systolic pressure over diastolic pressure.
+- Heart Rate (bpm): The resting heart rate of the person in beats per minute.
+- Daily Steps: The number of steps the person takes per day.
+- Sleep Disorder: The presence or absence of a sleep disorder in the person (None, Insomnia, Sleep Apnea).
+
+## Preview of the data
+```{r echo=FALSE}
+data <- read.csv("C:/Users/Ashraf/OneDrive/Documents/STATSFINAL/Sleep_health_and_lifestyle_dataset.csv")
+
+selected_data <- data %>% select("Gender", "Age","Occupation", "Sleep.Duration", "Quality.of.Sleep")
+
+head(selected_data)
+```
+```{r echo=FALSE}
+data <- read.csv("C:/Users/Ashraf/OneDrive/Documents/STATSFINAL/Sleep_health_and_lifestyle_dataset.csv")
+
+selected_data <- data %>% select("Quality.of.Sleep", "Physical.Activity.Level","Stress.Level", "Sleep.Duration")
+
+head(selected_data)
+```
+
+## Some summaries of some columns
+
+```{r echo=FALSE}
+print("Summary of Sleep Duration:" )
+summary(data$Sleep.Duration)
+
+print("Summary of Quality of Sleep:" )
+summary(data$Quality.of.Sleep)
+
+print("Summary of Stress Level" )
+summary(data$Stress.Level)
+
+
+
+```
+
+
+
+
+## Are There Differences in Sleep Duration Between Genders?
+
+```{r echo=FALSE}
+# Create a box plot using ggplot2
+ggplot(data, aes(x = Gender, y = Sleep.Duration, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "Sleep Duration Comparison between Males and Females",
+       x = "Gender",
+       y = "Sleep Duration (hours)") +
+  theme_minimal()
+```
+
+## Are There Differences in Sleep Duration Between Genders? Cont.
+
+Hypotheses:
+
+- **Null Hypothesis (H0):** Males and females have the same average sleep time \( \mu_{\text{males}} = \mu_{\text{females}} \)
+- **Alternative Hypothesis (H1):** Males and females don't have the same average sleep time \( \mu_{\text{males}} \neq \mu_{\text{females}} \)
+
+We will perform a t-test to test the hypotheses.
+
+
+## Are There Differences in Sleep Duration Between Genders? Cont.
+
+```{r echo=FALSE}
+# Perform the t-test
+t_test_result <- t.test(Sleep.Duration ~ Gender, data = data)
+
+# Print the t-test result
+print(t_test_result)
+```
+Since the interval doesn't include zero and the p-value is less than the significance level (commonly 0.05), we may conclude that there is a significant difference in the average sleep duration between females and males.
+
+
+## Are There Differences in Sleep Duration Between Genders? Cont.
+Let's do a permutation test to be sure that women on average sleep longer than males
+```{r echo=FALSE}
+set.seed(123)
+
+# Extract sleep duration for males and females
+sleep_duration_males <- data$Sleep.Duration[data$Gender == "Male"]
+sleep_duration_females <- data$Sleep.Duration[data$Gender == "Female"]
+
+# Calculate the observed difference in sleep duration
+observed_difference <- mean(sleep_duration_females) - mean(sleep_duration_males)
+
+# Number of permutations (adjust as needed)
+num_permutations <- 10000
+
+# Initialize an empty vector to store permuted differences
+permuted_differences <- numeric(num_permutations)
+
+# Permutation testing loop
+for (i in 1:num_permutations) {
+  # Combine sleep duration for males and females
+  combined_sleep_duration <- c(sleep_duration_males, sleep_duration_females)
+  
+  # Permute the gender labels
+  permuted_gender <- sample(data$Gender)
+  
+  # Calculate permuted difference in means
+  permuted_difference <- mean(combined_sleep_duration[permuted_gender == "Female"]) - 
+                         mean(combined_sleep_duration[permuted_gender == "Male"])
+  
+  # Store the permuted difference
+  permuted_differences[i] <- permuted_difference
+}
+
+# Calculate p-value
+p_value <- mean(abs(permuted_differences) >= abs(observed_difference))
+
+# Print results
+cat("Observed Difference:", observed_difference, "\n")
+cat("P-value:", p_value, "\n")
+cat("The mean of the permuted differences is ", mean(abs(permuted_differences)))
+
+```
+## Are There Differences in Sleep Duration Between Genders? Cont.
+
+```{r echo=FALSE}
+hist(permuted_differences, main = "Permutation Distribution of Differences", xlab = "Difference")
+abline(v = observed_difference, col = "red", lty = 2)
+
+print(" P-value and graph suggest the observed value is accurate")
+```
+ 
+##  Are There Differences in Sleep Duration Between Genders? Conclusive Answer
+ 
+The fact that the distribution of permuted differences is centered around 0 is what you would expect if there is truly no difference in sleep duration between males and females (the null hypothesis is true).
+
+The observed difference is significantly larger than the majority of permuted differences, it suggests that the observed difference is unlikely to have occurred by random chance alone. This is what you would expect if there is a true difference in sleep duration between males and females (the alternative hypothesis is true).
+ 
+Since the observed difference is positive, It suggests that females, on average, sleep significantly longer than males. This supports the alternative hypothesis and contradicts the null hypothesis.
+
+## Correlation between sleep duration and fitness? 
+
+```{r echo=FALSE}
+# Scatter plot
+plot(data$Sleep.Duration, data$Daily.Steps, 
+     xlab = "Sleep Duration (hours)", 
+     ylab = "Daily Steps",
+     main = "Relationship between Sleep Duration and Daily Steps")
+```
+
+## Correlation between sleep duration and fitness? Cont.
+
+```{r echo=FALSE}
+# Scatter plot
+plot(data$Sleep.Duration, data$Physical.Activity.Level, 
+     xlab = "Sleep Duration (hours)", 
+     ylab = "Physical Activity Level",
+     main = "Relationship between Sleep Duration and Physical Fitness Level")
+```
+
+## Correlation between sleep duration and fitness? Cont. 
+
+```{r echo=FALSE}
+
+data$BMI.Category[data$BMI.Category %in% c("Normal", "Normal Weight")] <- "Normal Weight"
+
+# encode the values so that it is usable
+data$BMI.Category <- as.factor(data$BMI.Category)
+
+
+
+# Create a box and whisker plot using ggplot2
+ggplot(data, aes(x = BMI.Category, y = Sleep.Duration, fill = BMI.Category)) +
+  geom_boxplot() +
+  labs(title = "Box and Whisker Plot of Sleep Duration by BMI Category",
+       x = "BMI Category",
+       y = "Sleep Duration") +
+  scale_fill_manual(values = c("blue", "green", "orange", "red"),
+                    labels = c("Normal Weight", "Obese", "Overweight")) +
+  theme(legend.position = "right",  # Adjust legend position
+        legend.title = element_blank(),  # Remove legend title
+        legend.text = element_text(size = 10))  # Adjust legend text size
+
+print(unique(data$BMI.Category))
+```
+
+## Correlation between sleep duration and fitness? Cont. 
+```{r echo=TRUE}
+# Correlation between sleep duration and daily steps
+correlation_steps <- cor.test(data$Sleep.Duration, data$Daily.Steps)
+# Correlation between sleep duration and physical fitness level
+correlation_fitness <- cor.test(data$Sleep.Duration, data$Physical.Activity.Level)
+# Correlation between sleep duration and BMI
+correlation_bmi <- cor.test(data$Sleep.Duration, as.numeric(data$BMI.Category))
+# Print correlation results
+```
+```{r echo=FALSE}
+cat("Correlation between sleep duration and daily step is: ", correlation_steps$estimate, "\n")
+cat("Correlation between sleep duration and physical fitness level is: ", correlation_fitness$estimate, "\n")
+cat("Correlation between sleep duration and BMI is: ", correlation_bmi$estimate, "\n")
+```
+
+## Correlation between sleep duration and fitness? Conclusive Answer 
+
+No strong relationship between sleep and steps. However there seems to be weak 
+correlation between sleep and level, and sleep and bmi. 
+
+There seems to be a weak correlation between sleep duration and physical fitness 
+level. This suggests that as a person sleeps longer, then they will have higher
+levels of fitness
+
+The sleep duration and BMI seem to be negatively correlated, suggesting that as BMI
+is lower/healthier, you get longer sleep. 
+
+## Does quality of sleep affect stress levels?
+```{r}
+# Scatter plot
+plot(data$Quality.of.Sleep, data$Stress.Level,
+     xlab = "Quality of Sleep",
+     ylab = "Stress Levels",
+     main = "Relationship between Quality of Sleep and Stress Levels")
+
+```
+
+## Does quality of sleep affect stress levels? Cont.
+
+The graph on the previous slide does show some relation between stress levels
+and quality of sleep
+
+```{r echo=FALSE}
+# Calculate correlation
+correlation_quality_stress <- cor(data$Quality.of.Sleep, data$Stress.Level)
+
+# Print the correlation coefficient
+cat("Correlation between quality of sleep and stress levels is:", correlation_quality_stress)
+
+```
+```{r echo=FALSE}
+# Scatter plot
+plot(data$Quality.of.Sleep, data$Stress.Level,
+     xlab = "Quality of Sleep",
+     ylab = "Stress Levels",
+     main = "Relationship between Quality of Sleep and Stress Levels")
+# Fit a linear regression model
+regression_model <- lm(Stress.Level ~ Quality.of.Sleep, data = data)
+abline(regression_model, col = "red")
+
+
+```
+
+## Does quality of sleep affect stress levels? Conclusive Answer
+
+With a correlation coefficient of -0.898752, there is a strong negative 
+correlation between quality of sleep and stress levels. The negative sign indicates 
+that as one variable (quality of sleep) increases, the other variable (stress levels) tends to decrease.
+The graph also shows the negative correlation 
+
+## Wrap-up 
+
+To summarize, based off this dataset: 
+
+- Females on average do sleep longer than men.
+- Duration of sleep does positively impact a range of physical fitness aspects such as level and bmi.
+- Quality of sleep does positively impact stress levels (lowering them).
+
+## References 
+
+[Sleep Health and Lifestyle Dataset by LAKSIKA THARMALINGAM](https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset)
+
